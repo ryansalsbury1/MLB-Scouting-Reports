@@ -1,0 +1,1599 @@
+---
+title: "MLB Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    css: my-custom-rules.css
+    theme:
+      bg: "white"
+      fg: "black" 
+      base_font:
+        google: "Exo 2"
+    orientation: rows
+---
+
+<style>
+
+
+body {
+  padding-top:0px;
+  background-color: white;
+  font-family: Exo 2;
+}
+
+
+
+
+pre {
+        border: 0;
+    }
+
+.navbar{
+  visibility: hidden;
+  background-color:white;
+  border-color:white;
+}
+
+.navbar-brand {
+color:black!important;
+}
+
+.doc_main {
+    margin-left: 260px;
+    font-size: 12px;
+    font-family: Exo 2;
+    line-height: 2;
+  }
+
+
+</style>
+
+
+
+
+```{r setup, include=FALSE}
+library(flexdashboard) 
+library(tidyverse)
+library(gtExtras)
+library(gt)
+library(cowplot)
+library(showtext)
+font_add_google("Exo 2")
+
+# Install thematic and un-comment for themed static plots (i.e., ggplot2)
+library(thematic)
+ thematic::thematic_rmd()
+ 
+#load packages
+library("baseballr")
+library(readr)
+
+player_batting <- read.csv("player_batting.csv")
+player_batting_splits <- read.csv("player_batting_splits.csv")
+team_batting <- read.csv("team_batting.csv")
+team_batting_splits <- read.csv("team_batting_splits.csv")
+team_pitching <- read.csv("team_pitching.csv")
+team_pitching_splits <- read.csv("team_pitching_splits.csv")
+player_starting_pitching <- read.csv("player_starting_pitching.csv")
+player_relief_pitching <- read.csv("player_relief_pitching.csv")
+player_pitching_splits <- read.csv("player_pitching_splits.csv")
+
+#round IP
+player_starting_pitching$ip <- round(player_starting_pitching$ip,0)
+player_relief_pitching$ip <- round(player_relief_pitching$ip,0)
+player_pitching_splits$ip <- round(player_pitching_splits$ip,0)
+
+
+
+#remove trailing 0
+#batting
+player_batting$avg <- ifelse(player_batting$avg < .1, paste0('.0', player_batting$avg*1000), paste0('.', player_batting$avg*1000))
+player_batting$slg <- ifelse(player_batting$slg < .1, paste0('.0', player_batting$slg*1000), paste0('.', player_batting$slg*1000))
+player_batting$obp <- ifelse(player_batting$obp < .1, paste0('.0', player_batting$obp*1000), paste0('.', player_batting$obp*1000))
+player_batting$iso <- ifelse(player_batting$iso < .1, paste0('.0', player_batting$iso*1000), paste0('.', player_batting$iso*1000))
+player_batting$xba <- ifelse(player_batting$xba < .1, paste0('.0', player_batting$xba*1000), paste0('.', player_batting$xba*1000))
+player_batting$xslg <- ifelse(player_batting$xslg < .1, paste0('.0', player_batting$xslg*1000), paste0('.', player_batting$xslg*1000))
+player_batting$xwoba <- ifelse(player_batting$xwoba < .1, paste0('.0', player_batting$xwoba*1000), paste0('.', player_batting$xwoba*1000))
+
+#player batting splits
+player_batting_splits$avg <- ifelse(player_batting_splits$avg < .1, paste0('.0', player_batting_splits$avg*1000), paste0('.', player_batting_splits$avg*1000))
+player_batting_splits$slg <- ifelse(player_batting_splits$slg < .1, paste0('.0', player_batting_splits$slg*1000), paste0('.', player_batting_splits$slg*1000))
+player_batting_splits$obp <- ifelse(player_batting_splits$obp < .1, paste0('.0', player_batting_splits$obp*1000), paste0('.', player_batting_splits$obp*1000))
+player_batting_splits$iso <- ifelse(player_batting_splits$iso < .1, paste0('.0', player_batting_splits$iso*1000), paste0('.', player_batting_splits$iso*1000))
+
+#player starting pitching
+player_starting_pitching$avg <- ifelse(player_starting_pitching$avg < .1, paste0('.0', player_starting_pitching$avg*1000), paste0('.', player_starting_pitching$avg*1000))
+player_starting_pitching$babip <- ifelse(player_starting_pitching$babip < .1, paste0('.0', player_starting_pitching$babip*1000), paste0('.', player_starting_pitching$babip*1000))
+
+#player relief pitching
+player_relief_pitching$avg <- ifelse(player_relief_pitching$avg < .1, paste0('.0', player_relief_pitching$avg*1000), paste0('.', player_relief_pitching$avg*1000))
+player_relief_pitching$babip <- ifelse(player_relief_pitching$babip < .1, paste0('.0', player_relief_pitching$babip*1000), paste0('.', player_relief_pitching$babip*1000))
+
+#player pitching splits
+player_pitching_splits$avg <- ifelse(player_pitching_splits$avg < .1, paste0('.0', player_pitching_splits$avg*1000), paste0('.', player_pitching_splits$avg*1000))
+player_pitching_splits$obp <- ifelse(player_pitching_splits$obp < .1, paste0('.0', player_pitching_splits$obp*1000), paste0('.', player_pitching_splits$obp*1000))
+player_pitching_splits$slg <- ifelse(player_pitching_splits$slg < .1, paste0('.0', player_pitching_splits$slg*1000), paste0('.', player_pitching_splits$slg*1000))
+player_pitching_splits$woba <- ifelse(player_pitching_splits$woba < .1, paste0('.0', player_pitching_splits$woba*1000), paste0('.', player_pitching_splits$woba*1000))
+
+#team batting
+team_batting$avg <- ifelse(team_batting$avg < .1, paste0('.0', team_batting$avg*1000), paste0('.', team_batting$avg*1000))
+team_batting$slg <- ifelse(team_batting$slg < .1, paste0('.0', team_batting$slg*1000), paste0('.', team_batting$slg*1000))
+team_batting$obp <- ifelse(team_batting$obp < .1, paste0('.0', team_batting$obp*1000), paste0('.', team_batting$obp*1000))
+team_batting$iso <- ifelse(team_batting$iso < .1, paste0('.0', team_batting$iso*1000), paste0('.', team_batting$iso*1000))
+
+#team batting splits
+team_batting_splits$avg <- ifelse(team_batting_splits$avg < .1, paste0('.0', team_batting_splits$avg*1000), paste0('.', team_batting_splits$avg*1000))
+team_batting_splits$slg <- ifelse(team_batting_splits$slg < .1, paste0('.0', team_batting_splits$slg*1000), paste0('.', team_batting_splits$slg*1000))
+team_batting_splits$obp <- ifelse(team_batting_splits$obp < .1, paste0('.0', team_batting_splits$obp*1000), paste0('.', team_batting_splits$obp*1000))
+team_batting_splits$iso <- ifelse(team_batting_splits$iso < .1, paste0('.0', team_batting_splits$iso*1000), paste0('.', team_batting_splits$iso*1000))
+
+#team pitching
+team_pitching$avg <- ifelse(team_pitching$avg < .1, paste0('.0', team_pitching$avg*1000), paste0('.', team_pitching$avg*1000))
+team_pitching$babip <- ifelse(team_pitching$babip < .1, paste0('.0', team_pitching$babip*1000), paste0('.', team_pitching$babip*1000))
+
+#team pitching splits
+team_pitching_splits$avg <- ifelse(team_pitching_splits$avg < .1, paste0('.0', team_pitching_splits$avg*1000), paste0('.', team_pitching_splits$avg*1000))
+team_pitching_splits$obp <- ifelse(team_pitching_splits$obp < .1, paste0('.0', team_pitching_splits$obp*1000), paste0('.', team_pitching_splits$obp*1000))
+team_pitching_splits$slg <- ifelse(team_pitching_splits$slg < .1, paste0('.0', team_pitching_splits$slg*1000), paste0('.', team_pitching_splits$slg*1000))
+team_pitching_splits$woba <- ifelse(team_pitching_splits$woba < .1, paste0('.0', team_pitching_splits$woba*1000), paste0('.', team_pitching_splits$woba*1000))
+
+
+mlb_standings <- read.csv("standings.csv")
+#convert date field to date
+mlb_standings$date <- as.Date(mlb_standings$date, format = "%Y-%m-%d") 
+#nudge images to the right for certain teams
+mlb_standings$nudge_runs_plot <- ifelse(mlb_standings$team_abbr %in% c("PIT", "SF", "NYM", "SD", "LAD"), .01, 0)
+mlb_standings$nudge_div_race_plot <- ifelse(mlb_standings$team_abbr %in% c("PIT", "SF", "NYM", "SD", "AD"), .017, 0)
+#adjust image size so all logos are nearly the same size when in plots
+mlb_standings$runs_plot_image_size_adj <- ifelse(mlb_standings$team_abbr %in% c("CHC", "BAL", "HOU", "TOR", "OAK", "CIN"), 0.013, 0)
+mlb_standings$div_race_image_size_adj <- ifelse(mlb_standings$team_abbr %in% c("CHC", "BAL", "HOU", "TOR", "OAK", "CIN"), 0.007, 0)
+
+#set fill color to be used for certain teams
+mlb_standings$gg_fill_color <- ifelse(mlb_standings$team_abbr %in% c("TOR", "NYM", "MIA", "MIL", "PIT"), mlb_standings$team_color, ifelse(mlb_standings$team_abbr %in% c("MIN"), "#B9975B", ifelse(mlb_standings$team_abbr %in% c("TEX"), "#D1E5F4", mlb_standings$team_color2)))
+
+#set border/line color to be used for plots for certain teams
+mlb_standings$gg_color <- ifelse(mlb_standings$team_abbr %in% c("TOR", "NYM", "MIL", "PIT"), mlb_standings$team_color2, ifelse(mlb_standings$team_abbr %in% c("MIA"), "black", mlb_standings$team_color))
+
+#update mlb_standings team abbreviations to match fangraphs data
+mlb_standings$team_abbr <- case_when(
+    mlb_standings$team_abbr == "TB" ~ "TBR",
+    mlb_standings$team_abbr == "AZ" ~ "ARI",
+    mlb_standings$team_abbr == "CWS" ~ "CHW",
+    mlb_standings$team_abbr == "KC" ~ "KCR",
+    mlb_standings$team_abbr == "SD" ~ "SDP",
+    mlb_standings$team_abbr == "SF" ~ "SFG",
+    mlb_standings$team_abbr == "WSH" ~ "WSN",
+    TRUE ~ mlb_standings$team_abbr
+)
+
+#filter to most recent date for overall season plots and for final points/logos on div trend plot
+mlb_standings_max <- mlb_standings %>% filter(date == max(date))
+
+#write.csv(mlb_team_logos, "mlb_team_logos.csv", row.names = FALSE)
+
+#mlb_team_logos <- read.csv("mlb_team_logos.csv")
+
+#create theme for runs plot
+runs_plot_theme <- function() { 
+  theme_minimal(base_size = 9, base_family = "Exo 2") %+replace%
+    theme(axis.text = element_text(size=7), 
+          axis.text.x=element_text(vjust=0),
+          axis.text.y=element_text(hjust=0),
+          axis.title= element_text(size=8), 
+          axis.title.x= element_text(vjust = -2),
+          axis.title.y= element_text(angle = 90, vjust = 3.5),
+          plot.title=element_text(size = 10, 
+                                  face="bold", 
+                                  color = team_color,  
+                                  margin = margin(b = 10), 
+                                  hjust = 0.5),
+          plot.subtitle=element_text(size = 10, 
+                                     vjust = 2.5),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_line(color = alpha("grey", .1)),
+          plot.margin=margin(b=1, t = .5, l=5.5,r=3, unit="lines")
+          ) }
+
+library("ggimage")
+
+#make images transparent
+library(magick)
+transparent <- function(img) {
+  magick::image_fx(img, expression = ".7*a", channel = "alpha")
+}
+
+
+#create player batting table theme
+player_batting_table_theme <- function(data, ...) {
+  data  %>%
+    # Relabel columns
+    cols_label(
+      name = "",
+      #pa_rk = "pa",
+      avg_rk = "avg",
+      obp_rk = "obp",
+      slg_rk = "slg",
+      iso_rk = "iso",
+      bbk_rk = "bb/k",
+      o_swing_rk = "chase%",
+      csw_rk = "csw%",
+      contact_rk = "contact%",
+      soft_rk = "soft%",
+      med_rk = "med%",
+      hard_rk = "hard%",
+      barrel_rk = "barrel%",
+      pull_rk = "pull%",
+      cent_rk = "center%",
+      oppo_rk = "oppo%",
+      wrc_rk = "wrc+",
+      war_rk = "war",
+      xba_rk = "xba",
+      xslg_rk = "xslg",
+      xwoba_rk = "xwoba"
+    ) %>%
+    # Make column labels and spanners all caps
+    opt_all_caps() %>%
+    # add row striping
+    opt_row_striping() %>%
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#363231",
+      table_body.hlines.color = alpha("gray99", alpha = 0),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      table.border.top.width = px(3),
+      table.border.top.color = alpha("gray99", alpha = 0),
+      table.border.bottom.color = alpha("gray99", alpha = 0),
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = alpha("gray99", alpha = 0),
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = alpha("#BEC2CB", alpha = 1),
+      heading.title.font.size = 10,
+      heading.align = "left",
+      # remove padding so player splits fit on one page
+      source_notes.padding = px(0),
+      
+      #row.striping.background_color = "#f9f9fb",
+      column_labels.font.size = 8,
+      column_labels.font.weight = "bold",
+      table.margin.left = px(50),
+      ...
+    ) %>%
+    cols_width(
+      1 ~ px(118),
+      pa ~ px(35.5),
+      #Contact %
+      everything() ~ px(47.84)
+    ) %>% 
+    # change color of border separating the text from the sourcenote
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "#585d63", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = nrow(data$`_data`)
+      )
+    ) %>%
+    #center align values
+    tab_style(
+    style = cell_text(align = "center"),
+    locations = cells_body(
+      columns = everything())) %>%
+    #center align col headers
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(
+        columns = everything())) %>%
+    #prevent player name from wrapping
+    tab_style(
+      style = cell_text(whitespace = "nowrap", size = px(12), color = "black", align = "left"),
+      locations = cells_body(
+        columns = name,
+    )) %>%
+    #pa font adjustment
+    tab_style(
+      style = cell_text(size = px(12), color = "black", align = "center"),
+      locations = cells_body(
+        columns = pa,
+      )) %>%
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Exo 2"),
+        default_fonts()
+      )
+    ) %>%
+     #change table heading color
+      tab_style(
+    style = list(
+      cell_text(
+        align = "left",
+        weight = 'bold',
+        color = team_color
+      )
+    ),
+    locations = list(
+      cells_title(groups = c("title"))
+    )
+  ) %>%
+    # add source note
+    tab_source_note(
+      source_note = md("")
+    )
+}
+
+
+team_batting_table_theme <- function(data, ...) {
+  data  %>%
+    # Relabel columns
+    cols_label(
+      team = "",
+      avg_rk = "avg",
+      obp_rk = "obp",
+      slg_rk = "slg",
+      iso_rk = "iso",
+      bb_rk = "bb%",
+      k_rk = "k%",
+      bbk_rk = "bb/k",
+      o_swing_rk = "chase%",
+      csw_rk = "csw%",
+      contact_rk = "contact%",
+      soft_rk = "soft%",
+      med_rk = "med%",
+      hard_rk = "hard%",
+      barrel_rk = "barrel%",
+      pull_rk = "pull%",
+      cent_rk = "center%",
+      oppo_rk = "oppo%",
+      wrc_rk = "wrc+"
+    ) %>%
+    # Make column labels and spanners all caps
+    opt_all_caps() %>%
+    # add row striping
+    opt_row_striping() %>%
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#363231",
+      table_body.hlines.color = alpha("gray99", alpha = 0),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      table.border.top.width = px(3),
+      table.border.top.color = alpha("gray99", alpha = 0),
+      table.border.bottom.color = alpha("gray99", alpha = 0),
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = alpha("gray99", alpha = 0),
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = alpha("#BEC2CB", alpha = 1),
+      heading.title.font.size = 10,
+      heading.align = "left",
+      
+      #row.striping.background_color = "#f9f9fb",
+      column_labels.font.size = 8,
+      column_labels.font.weight = "bold",
+      table.margin.left = px(50),
+      ...
+    ) %>%
+    cols_width(
+      team ~ px(42),
+      everything() ~ px(59.35)
+    ) %>% 
+    # change color of border separating the text from the sourcenote
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "#585d63", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = nrow(data$`_data`)
+      )
+    ) %>%
+    #center align values
+    tab_style(
+    style = cell_text(align = "center"),
+    locations = cells_body(
+      columns = everything())) %>%
+    #center align col headers
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(
+        columns = everything())) %>%
+    #prevent team name from wrapping
+    tab_style(
+      style = cell_text(whitespace = "nowrap", size = px(12), color = "black", align = "left"),
+      locations = cells_body(
+        columns = team,
+    )) %>%
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Exo 2"),
+        default_fonts()
+      )
+    ) %>%
+     #change table heading color
+      tab_style(
+    style = list(
+      cell_text(
+        align = "left",
+        weight = 'bold',
+        color = team_color
+      )
+    ),
+    locations = list(
+      cells_title(groups = c("title"))
+    )
+  ) %>%
+    # add source note
+    tab_source_note(
+      source_note = md("")
+    )
+}
+
+#custom theme to make label blank for bar in table
+gt_plt_bar_custom <- function(gt_object,
+                       column = NULL,
+                       color = "purple",
+                       ...,
+                       keep_column = FALSE,
+                       width = 70,
+                       scale_type = "none",
+                       text_color = "white") {
+  stopifnot(
+    "'gt_object' must be a 'gt_tbl',
+            have you accidentally passed raw data?" = "gt_tbl" %in% class(gt_object)
+  )
+  stopifnot(
+    "`scale_type` must be one of 'number', 'percent' or 'none'" =
+      scale_type %in% c("number", "percent", "none")
+  )
+
+  var_sym <- rlang::enquo(column)
+  var_bare <- rlang::as_label(var_sym)
+  col_bare <- var_bare
+
+  all_vals <- gt_index(gt_object, {{ column }}) %>%
+    unlist()
+
+  # need to handle truly empty cols
+  if (length(na.omit(all_vals)) == 0) {
+    return(gt_object)
+  }
+
+  stopifnot(
+    "Colors must be either length 1 or equal length to the column" =
+      isTRUE(length(color) == 1 | length(color) == length(all_vals))
+  )
+
+  stopifnot("'text_color' must be length 1" = length(text_color) == 1)
+
+  if (length(color) == 1) {
+    colors <- rep(color, length(all_vals))
+  } else if (length(color) == length(all_vals)) {
+    colors <- color
+  }
+
+  if ((min(all_vals, na.rm = TRUE) >= 0)) {
+    min_val <- 0
+    rng_multiplier <- c(0.98, 1.02)
+  } else if (
+    (max(all_vals, na.rm = TRUE) < 0 & min(all_vals, na.rm = TRUE) < 0)
+    ) {
+    min_val <- min(all_vals, na.rm = TRUE)
+    rng_multiplier <- c(1.02, 0)
+  } else {
+    min_val <- min(all_vals, na.rm = TRUE)
+    rng_multiplier <- c(1.02, 1.02)
+  }
+
+  total_rng <- c(min_val, max(all_vals, na.rm = TRUE)) * rng_multiplier
+
+  if (isTRUE(keep_column)) {
+    gt_object <- gt_object %>%
+      gt_duplicate_column({{ column }}, dupe_name = "DUPE_COLUMN_PLT")
+  }
+
+  bar_fx <- function(x_val, colors) {
+    if (x_val %in% c("NA", "NULL", NA)) {
+      return("<div></div>")
+    }
+
+
+    vals <- as.double(x_val)
+
+    df_in <- dplyr::tibble(
+      x = vals,
+      y = rep(1),
+      fill = colors
+    )
+
+    plot_out <- df_in %>%
+      ggplot(
+        aes(
+          x = .data$x,
+          y = factor(.data$y),
+          fill = I(.data$fill),
+          group = .data$y
+        )
+      ) +
+      geom_col(color = "transparent", width = 0.3) +
+      scale_x_continuous(
+        limits = total_rng,
+        expand = expansion(mult = c(0.05, 0.08)),
+      ) +
+      scale_y_discrete(expand = expansion(mult = c(0.2, 0.2))) +
+      geom_vline(xintercept = 0, color = "black", linewidth = 1) +
+      coord_cartesian(clip = "off") +
+      theme_void() +
+      theme(legend.position = "none", plot.margin = unit(rep(0, 4), "pt"))
+
+    if (scale_type != "none") {
+      plot_out <- plot_out +
+        geom_text(
+          aes(
+            x = .data$x,
+            label = if (scale_type == "number") {
+              scales::label_number(...)(.data$x)
+            } else if (scale_type == "percent") {
+              scales::label_percent(...)(.data$x)
+            },
+            hjust = ifelse(.data$x >= 0, 1, 0)
+          ),
+          nudge_x = sign(df_in$x) * (-1) / 80,
+          vjust = 0.5,
+          size = 3,
+          family = "mono",
+          color = text_color,
+          fontface = "bold"
+        )
+    }
+
+    out_name <- file.path(tempfile(
+      pattern = "file",
+      tmpdir = tempdir(),
+      fileext = ".svg"
+    ))
+
+    ggsave(
+      out_name,
+      plot = plot_out,
+      dpi = 25.4,
+      height = 5,
+      width = width,
+      units = "mm",
+      device = "svg"
+    )
+
+    img_plot <- readLines(out_name) %>%
+      paste0(collapse = "") %>%
+      gt::html()
+
+    on.exit(file.remove(out_name), add = TRUE)
+
+    img_plot
+  }
+
+
+  tab_out <- text_transform(
+    gt_object,
+    locations = if (isTRUE(keep_column)) {
+      cells_body(columns = c("DUPE_COLUMN_PLT"))
+    } else {
+      cells_body(columns = {{ column }})
+    },
+    fn = function(x) {
+      tab_built <- mapply(bar_fx, x_val = x, colors = colors)
+    }
+  )
+
+  if (isTRUE(keep_column)) {
+    tab_out %>%
+      cols_label(DUPE_COLUMN_PLT = " ") %>%
+      cols_align("left", columns = c(DUPE_COLUMN_PLT))
+  } else {
+    tab_out %>%
+      cols_label(bar = " ") %>%
+      cols_align("left", columns = {{ column }})
+  }
+}
+
+team_batting_splits_table_theme <- function(data, ...) {
+  data  |>
+    # Relabel columns
+    cols_label(
+      team = "",
+      avg_rk = "avg",
+      obp_rk = "obp",
+      slg_rk = "slg",
+      iso_rk = "iso",
+      bbk_rk = "bb/k",
+      wrc_rk = "wrc+",
+    ) |>
+    # Make column labels and spanners all caps
+    opt_all_caps() |>
+    # add row striping
+    opt_row_striping() |>
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#363231",
+      table_body.hlines.color = alpha("gray99", alpha = 0),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      table.border.top.width = px(3),
+      table.border.top.color = alpha("gray99", alpha = 0),
+      table.border.bottom.color = alpha("gray99", alpha = 0),
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = alpha("gray99", alpha = 0),
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = alpha("#BEC2CB", alpha = 1),
+      heading.title.font.size = 10,
+      heading.align = "left",
+      
+      #row.striping.background_color = "#f9f9fb",
+      column_labels.font.size = 8,
+      column_labels.font.weight = "bold",
+      table.margin.left = px(50),
+      ...
+    ) |>
+    cols_width(
+      1 ~ px(42),
+      2 ~ px(54.5),
+      3 ~ px(54.5),
+      4 ~ px(54.5),
+      5 ~ px(54.5),
+      6 ~ px(54.5),
+      7 ~ px(54.5),
+      8 ~ px(54.5),
+      9 ~ px(54.5),
+      10 ~ px(54.5),
+      11 ~ px(54.5),
+      12 ~ px(54.5),
+      13 ~ px(54.5),
+      14 ~ px(54.5)
+    ) |> 
+    # change color of border separating the text from the sourcenote
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "#585d63", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = nrow(data$`_data`)
+      )
+    ) |>
+    #center align values
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_body(
+        columns = everything())) |>
+    #center align col headers
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(
+        columns = everything())) |>
+    #prevent team name from wrapping
+    tab_style(
+      style = cell_text(whitespace = "nowrap", size = px(12), color = "black", align = "left"),
+      locations = cells_body(
+        columns = team,
+      )) |>
+    #split type font adjustment
+    tab_style(
+      style = cell_text(size = px(12), color = "black", align = "center"),
+      locations = cells_body(
+        columns = split,
+      )) |>
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Exo 2"),
+        default_fonts()
+      )
+    ) |>
+    #change table heading color
+    tab_style(
+      style = list(
+        cell_text(
+          align = "left",
+          weight = 'bold',
+          color = team_color
+        )
+      ),
+      locations = list(
+        cells_title(groups = c("title"))
+      )
+    ) |>
+    # add source note
+    tab_source_note(
+      source_note = md("")
+    )
+}
+
+
+player_batting_splits_table_theme <- function(data, ...) {
+  data  |>
+    # Relabel columns
+    cols_label(
+      name = "",
+      avg_rk = "avg",
+      obp_rk = "obp",
+      slg_rk = "slg",
+      iso_rk = "iso",
+      bbk_rk = "bb/k",
+      wrc_rk = "wrc+",
+    ) |>
+    # Make column labels and spanners all caps
+    opt_all_caps() |>
+    # add row striping
+    opt_row_striping() |>
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#363231",
+      table_body.hlines.color = alpha("gray99", alpha = 0),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      table.border.top.width = px(3),
+      table.border.top.color = alpha("gray99", alpha = 0),
+      table.border.bottom.color = alpha("gray99", alpha = 0),
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = alpha("gray99", alpha = 0),
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = alpha("#BEC2CB", alpha = 1),
+      heading.title.font.size = 10,
+      heading.align = "left",
+      row_group.font.size = 9,
+      row_group.padding = px(1),
+      row_group.border.top.color = alpha("gray99", alpha = 0),
+      row_group.border.bottom.width = px(.2),
+      row_group.border.bottom.color = alpha("#BEC2CB", alpha = .3),
+      #row.striping.background_color = "#f9f9fb",
+      column_labels.font.size = 8,
+      column_labels.font.weight = "bold",
+      table.margin.left = px(50),
+      ...
+    ) |>
+    cols_width(
+      1 ~ px(42),
+      2 ~ px(53),
+      3 ~ px(53),
+      4 ~ px(53),
+      5 ~ px(53),
+      6 ~ px(53),
+      7 ~ px(53),
+      8 ~ px(53),
+      9 ~ px(53),
+      10 ~ px(53),
+      11 ~ px(53),
+      12 ~ px(53),
+      13 ~ px(53),
+      14 ~ px(53),
+      15 ~ px(53),
+      16 ~ px(80)
+    ) |> 
+    #center align values
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_body(
+        columns = everything())) |>
+    #center align col headers
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(
+        columns = everything())) |>
+    #prevent player name from wrapping
+    tab_style(
+      style = cell_text(whitespace = "nowrap", size = px(9), color = "black", align = "left"),
+      locations = cells_body(
+        columns = name,
+    )) %>%
+    #pa font adjustment
+    tab_style(
+      style = cell_text(size = px(12), color = "black", align = "center"),
+      locations = cells_body(
+        columns = pa,
+      )) %>%
+    #split type font adjustment
+    tab_style(
+      style = cell_text(size = px(12), color = "black", align = "center"),
+      locations = cells_body(
+        columns = split,
+      )) |>
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Exo 2"),
+        default_fonts()
+      )
+    ) |>
+    #change table heading color
+    tab_style(
+      style = list(
+        cell_text(
+          align = "left",
+          weight = 'bold',
+          color = team_color
+        )
+      ),
+      locations = list(
+        cells_title(groups = c("title"))
+      )
+    ) |>
+    # add source note
+    tab_source_note(
+      source_note = md("")
+    )
+}
+
+
+team_pitching_table_theme <- function(data, ...) {
+  data  %>%
+    # Relabel columns
+    cols_label(
+      team = "",
+      avg_rk = "avg",
+      whip_rk = "whip",
+      babip_rk = "babip",
+      k9_rk = "k/9",
+      bb9_rk = "bb/9",
+      kbb_rk = "k/bb",
+      hr9_rk = "hr/9",
+      hrfb_rk = "hr/fb",
+      gb_rk = "gb%",
+      fb_rk = "fb%",
+      zone_rk = "zone%",
+      fstrike_rk = "f-strike%",
+      o_swing_rk = "chase%",
+      csw_rk = "csw%",
+      soft_rk = "soft%",
+      med_rk = "med%",
+      hard_rk = "hard%",
+      barrel_rk = "barrel%",
+      era_rk = "era-",
+      fip_rk = "fip-",
+      xfip_rk = "xfip-",
+      siera_rk = "siera"
+    ) %>%
+    # Make column labels and spanners all caps
+    opt_all_caps() %>%
+    # add row striping
+    opt_row_striping() %>%
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#363231",
+      table_body.hlines.color = alpha("gray99", alpha = 0),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      table.border.top.width = px(3),
+      table.border.top.color = alpha("gray99", alpha = 0),
+      table.border.bottom.color = alpha("gray99", alpha = 0),
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = alpha("gray99", alpha = 0),
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = alpha("#BEC2CB", alpha = 1),
+      heading.title.font.size = 10,
+      heading.align = "left",
+      
+      #row.striping.background_color = "#f9f9fb",
+      column_labels.font.size = 8,
+      column_labels.font.weight = "bold",
+      table.margin.left = px(50),
+      ...
+    ) %>%
+    cols_width(
+      fstrike_rk ~ px(52),
+      everything() ~ px(48.1)
+    ) %>% 
+    # change color of border separating the text from the sourcenote
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "#585d63", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = nrow(data$`_data`)
+      )
+    ) %>%
+    #center align values
+    tab_style(
+    style = cell_text(align = "center"),
+    locations = cells_body(
+      columns = everything())) %>%
+    #center align col headers
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(
+        columns = everything())) %>%
+    #prevent team name from wrapping
+    tab_style(
+      style = cell_text(whitespace = "nowrap", size = px(12), color = "black", align = "left"),
+      locations = cells_body(
+        columns = team,
+    )) %>%
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Exo 2"),
+        default_fonts()
+      )
+    ) %>%
+    #change table heading color
+      tab_style(
+    style = list(
+      cell_text(
+        align = "left",
+        weight = 'bold',
+        color = team_color
+      )
+    ),
+    locations = list(
+      cells_title(groups = c("title"))
+    )
+  ) %>%
+    # add source note
+    tab_source_note(
+      source_note = md("")
+    )
+}
+
+
+team_pitching_splits_table_theme <- function(data, ...) {
+  data  %>%
+    # Relabel columns
+    cols_label(
+      team = "",
+      avg_rk = "avg",
+      obp_rk = "obp",
+      slg_rk = "slg",
+      kbb_rk = "k/bb",
+      woba_rk = "woba",
+      fip_rk = "fip",
+      xfip_rk = "xfip",
+    ) %>%
+    # Make column labels and spanners all caps
+    opt_all_caps() %>%
+    # add row striping
+    opt_row_striping() %>%
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#363231",
+      table_body.hlines.color = alpha("gray99", alpha = 0),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      table.border.top.width = px(3),
+      table.border.top.color = alpha("gray99", alpha = 0),
+      table.border.bottom.color = alpha("gray99", alpha = 0),
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = alpha("gray99", alpha = 0),
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = alpha("#BEC2CB", alpha = 1),
+      heading.title.font.size = 10,
+      heading.align = "left",
+      
+      #row.striping.background_color = "#f9f9fb",
+      column_labels.font.size = 8,
+      column_labels.font.weight = "bold",
+      table.margin.left = px(50),
+      ...
+    ) |>
+    cols_width(
+      1 ~ px(42),
+      2 ~ px(53),
+      3 ~ px(53),
+      4 ~ px(53),
+      5 ~ px(53),
+      6 ~ px(53),
+      7 ~ px(53),
+      8 ~ px(53),
+      9 ~ px(53),
+      10 ~ px(53),
+      11 ~ px(53),
+      12 ~ px(53),
+      13 ~ px(53),
+      14 ~ px(53),
+      15 ~ px(53),
+      16 ~ px(53)
+    ) |>
+    # change color of border separating the text from the sourcenote
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "#585d63", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = nrow(data$`_data`)
+      )
+    ) %>%
+    #center align values
+    tab_style(
+    style = cell_text(align = "center"),
+    locations = cells_body(
+      columns = everything())) %>%
+    #center align col headers
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(
+        columns = everything())) %>%
+    #prevent team name from wrapping
+    tab_style(
+      style = cell_text(whitespace = "nowrap", size = px(12), color = "black", align = "left"),
+      locations = cells_body(
+        columns = team,
+    )) %>%
+    #split type font adjustment
+    tab_style(
+      style = cell_text(size = px(12), color = "black", align = "center"),
+      locations = cells_body(
+        columns = split,
+      )) %>%
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Exo 2"),
+        default_fonts()
+      )
+    ) %>%
+     #change table heading color
+      tab_style(
+    style = list(
+      cell_text(
+        align = "left",
+        weight = 'bold',
+        color = team_color
+      )
+    ),
+    locations = list(
+      cells_title(groups = c("title"))
+    )
+  ) %>%
+    # add source note
+    tab_source_note(
+      source_note = md("")
+    )
+}
+
+
+player_pitching_splits_table_theme <- function(data, ...) {
+  data  %>%
+    # Relabel columns
+    cols_label(
+      name = "",
+      avg_rk = "avg",
+      obp_rk = "obp",
+      slg_rk = "slg",
+      kbb_rk = "k/bb",
+      woba_rk = "woba",
+      fip_rk = "fip",
+      xfip_rk = "xfip",
+    ) %>%
+    # Make column labels and spanners all caps
+    opt_all_caps() %>%
+    # add row striping
+    opt_row_striping() %>%
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#363231",
+      table_body.hlines.color = alpha("gray99", alpha = 0),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      table.border.top.width = px(3),
+      table.border.top.color = alpha("gray99", alpha = 0),
+      table.border.bottom.color = alpha("gray99", alpha = 0),
+      table.border.bottom.width = px(3),
+      row_group.font.size = 9,
+      row_group.padding = px(1),
+      row_group.border.top.color = alpha("gray99", alpha = 0),
+      row_group.border.bottom.width = px(.2),
+      row_group.border.bottom.color = alpha("#BEC2CB", alpha = .3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = alpha("gray99", alpha = 0),
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = alpha("#BEC2CB", alpha = 1),
+      heading.title.font.size = 10,
+      heading.align = "left",
+      
+      #row.striping.background_color = "#f9f9fb",
+      column_labels.font.size = 8,
+      column_labels.font.weight = "bold",
+      table.margin.left = px(50),
+      ...
+    ) |>
+    cols_width(
+      1 ~ px(42),
+      2 ~ px(53),
+      3 ~ px(53),
+      4 ~ px(53),
+      5 ~ px(53),
+      6 ~ px(53),
+      7 ~ px(53),
+      8 ~ px(53),
+      9 ~ px(53),
+      10 ~ px(53),
+      11 ~ px(53),
+      12 ~ px(53),
+      13 ~ px(53),
+      14 ~ px(53),
+      15 ~ px(53),
+      16 ~ px(53),
+      17 ~ px(53),
+      18 ~ px(80)
+    ) |>
+    #center align values
+    tab_style(
+    style = cell_text(align = "center"),
+    locations = cells_body(
+      columns = everything())) %>%
+    #center align col headers
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(
+        columns = everything())) %>%
+    #prevent player name from wrapping
+    tab_style(
+      style = cell_text(whitespace = "nowrap", size = px(12), color = "black", align = "left"),
+      locations = cells_body(
+        columns = name,
+    )) %>%
+    #ip
+    tab_style(
+      style = cell_text(size = px(12), color = "black", align = "center"),
+      locations = cells_body(
+        columns = c(ip)
+      )) %>%
+    #split type font adjustment
+    tab_style(
+      style = cell_text(size = px(12), color = "black", align = "center"),
+      locations = cells_body(
+        columns = split,
+      )) %>%
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Exo 2"),
+        default_fonts()
+      )
+    ) %>%
+     #change table heading color
+      tab_style(
+    style = list(
+      cell_text(
+        align = "left",
+        weight = 'bold',
+        color = team_color
+      )
+    ),
+    locations = list(
+      cells_title(groups = c("title"))
+    )
+  ) %>%
+    # add source note
+    tab_source_note(
+      source_note = md("")
+    )
+}
+
+
+
+player_pitching_table_theme <- function(data, ...) {
+  data  %>%
+    # Relabel columns
+    cols_label(
+      name = "",
+      avg_rk = "avg",
+      whip_rk = "whip",
+      babip_rk = "babip",
+      k9_rk = "k/9",
+      bb9_rk = "bb9",
+      kbb_rk = "k/bb",
+      hr9_rk = "hr/9",
+      hrfb_rk = "hr/fb",
+      gb_rk = "gb%",
+      fb_rk = "fb%",
+      zone_rk = "zone%",
+      fstrike_rk = "f-strike%",
+      o_swing_rk = "chase%",
+      csw_rk = "csw%",
+      soft_rk = "soft%",
+      med_rk = "med%",
+      hard_rk = "hard%",
+      barrel_rk = "barrel%",
+      era_rk = "era-",
+      fip_rk = "fip-",
+      xfip_rk = "xfip-",
+      siera_rk = "siera",
+      war_rk = "war"
+    ) %>%
+    # Make column labels and spanners all caps
+    opt_all_caps() %>%
+    # add row striping
+    opt_row_striping() %>%
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#363231",
+      table_body.hlines.color = alpha("gray99", alpha = 0),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      table.border.top.width = px(3),
+      table.border.top.color = alpha("gray99", alpha = 0),
+      table.border.bottom.color = alpha("gray99", alpha = 0),
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = alpha("gray99", alpha = 0),
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = alpha("#BEC2CB", alpha = 1),
+      heading.title.font.size = 10,
+      heading.align = "left",
+      
+      #row.striping.background_color = "#f9f9fb",
+      column_labels.font.size = 8,
+      column_labels.font.weight = "bold",
+      table.margin.left = px(50),
+      ...
+    ) %>%
+    cols_width(
+      1 ~ px(118),
+      ip ~ px(32.2),
+      gs ~ px(32.2),
+      fstrike_rk ~ px(52),
+      barrel_rk ~ px(52),
+      everything() ~ px(39.2)
+    ) %>% 
+    # change color of border separating the text from the sourcenote
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "#585d63", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = nrow(data$`_data`)
+      )
+    ) %>%
+    #center align values
+    tab_style(
+    style = cell_text(align = "center"),
+    locations = cells_body(
+      columns = everything())) %>%
+    #center align col headers
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(
+        columns = everything())) %>%
+    #prevent player name from wrapping
+    tab_style(
+      style = cell_text(whitespace = "nowrap", size = px(12), color = "black", align = "left"),
+      locations = cells_body(
+        columns = name,
+    )) %>%
+    #ip + gs font adjustment
+    tab_style(
+      style = cell_text(size = px(12), color = "black", align = "center"),
+      locations = cells_body(
+        columns = c(ip, gs)
+      )) %>%
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Exo 2"),
+        default_fonts()
+      )
+    ) %>%
+    #change table heading color
+      tab_style(
+    style = list(
+      cell_text(
+        align = "left",
+        weight = 'bold',
+        color = team_color
+      )
+    ),
+    locations = list(
+      cells_title(groups = c("title"))
+    )
+  ) %>%
+    # add source note
+    tab_source_note(
+      source_note = md("")
+    )
+}
+
+#stack label on top of percentile rank for columns that should be highlighted
+stack_function_colors <- function(x){
+  
+  model <- sub(x = x, pattern = " .*$", replacement = "")
+  name <- sub(x = x, pattern = ".*? ", replacement = "")
+  
+  ifelse(as.numeric(model) >= 75,  
+         glue::glue(
+           "<div style='line-height:11px'>
+<span style='color:black;small-caps;font-size:12px'>
+{name}</div>
+<div style='line-height:11px'>
+<span style ='font-weight:bold;background-color: #169D82;color:white;font-size:8px;padding-left:3px;padding-right:3px;'>
+{model}</span></div>"
+         ),ifelse(as.numeric(model) <= 25,
+                  glue::glue(
+                    "<div style='line-height:11px'>
+<span style='color:black;small-caps;font-size:12px'>
+{name}</div>
+<div style='line-height:11px'>
+<span style ='font-weight:bold;background-color:#F4D166;color:black;font-size:8px;padding-left:3px;padding-right:3px;'>
+{model}</span></div>"
+                  ),glue::glue(
+                    "<div style='line-height:11px'>
+<span style='color:black;small-caps;font-size:12px'>
+{name}</div>
+<div style='line-height:11px'>
+<span style ='color:black;font-size:8px'>
+{model}</span></div>")))
+}
+
+#stack label on top of league rank for columns that should be highlighted
+stack_function_rk_colors <- function(x){
+  
+  model <- sub(x = x, pattern = " .*$", replacement = "")
+  name <- sub(x = x, pattern = ".*? ", replacement = "")
+  
+  ifelse(as.numeric(model) <= 8,  
+         glue::glue(
+           "<div style='line-height:11px'>
+<span style='color:black;small-caps;font-size:12px'>
+{name}</div>
+<div style='line-height:11px'>
+<span style ='font-weight:bold;background-color: #169D82;color:white;font-size:8px;padding-left:3px;padding-right:3px;'>
+{model}</span></div>"
+         ),ifelse(as.numeric(model) >= 24,
+                  glue::glue(
+                    "<div style='line-height:11px'>
+<span style='color:black;small-caps;font-size:12px'>
+{name}</div>
+<div style='line-height:11px'>
+<span style ='font-weight:bold;background-color:#F4D166;color:black;font-size:8px;padding-left:3px;padding-right:3px;'>
+{model}</span></div>"
+                  ),glue::glue(
+                    "<div style='line-height:11px'>
+<span style='color:black;small-caps;font-size:12px'>
+{name}</div>
+<div style='line-height:11px'>
+<span style ='color:black;font-size:8px'>
+{model}</span></div>")))
+}
+
+
+#stack label on top of percentile rank for columns that should not be highlighted
+stack_function_black <- function(x){
+  
+  model <- sub(x = x, pattern = " .*$", replacement = "")
+  name <- sub(x = x, pattern = ".*? ", replacement = "")
+  
+  
+glue::glue("<div style='line-height:11px'>
+<span style='color:black;small-caps;font-size:12px'>
+{name}</div>
+<div style='line-height:11px'>
+<span style ='color:black;font-size:8px;padding-left:3px;padding-right:3px;'>
+{model}</span></div>")
+}
+
+
+
+
+
+#radar plot
+library(fmsb)
+radar_plot_data <- read.csv("radar_plot_data.csv")
+
+radar_plot_func <- function(data, color = c("#b6e3d7", "#137a63"), 
+                                        vlabels = colnames(data), vlcex = 0.7,
+                                        caxislabels = NULL, title = NULL, ...){
+  radarchart(
+    data, axistype = 1,
+    # Customize the polygon
+    pcol = color, pfcol = alpha(color, 0.3), plwd = 4, plty = 1,
+    # Customize the grid
+    cglcol = "grey", cglty = 1, cglwd = 0.5,
+    # Customize the axis
+    axislabcol = "grey", 
+    # Variable labels
+    vlcex = vlcex, vlabels = vlabels,
+    caxislabels = caxislabels, title = title, ...
+  )
+}
+
+```
+
+
+```{r render subpages, include=FALSE}
+# Get all unique product groups for the subpages
+teams <- as.character(mlb_standings_max$team_abbr)
+#only do one team
+teams <- "CHC"
+
+# Create variable which, stores all subpages outputs
+out = NULL
+
+# Set knitr options to allow duplicate labels (needed for the subpages)
+options(knitr.duplicate.label = 'allow')
+
+# Create temporary environment which we use for knitting subpages.RMD 
+
+team_env <- new.env()
+
+
+for (t in teams) {
+  # Filter player_batting
+  player_batting_team <- player_batting %>% 
+    filter(team == t)
+  
+  # Filter team_batting
+  team_batting_team <- team_batting %>% 
+    filter(team == t)
+  
+  # Filter team_batting_splits
+  team_batting_splits_team <- team_batting_splits %>% 
+    filter(team == t)
+  
+  player_batting_splits_team <- player_batting_splits %>% 
+    filter(team == t)
+  
+   # Filter team_pitching
+  team_pitching_team <- team_pitching %>% 
+    filter(team == t)
+  
+  # Filter team_pitching splits
+  team_pitching_splits_team <- team_pitching_splits %>% 
+    filter(team == t)
+  
+   # Filter player_starting_pitching
+  player_starting_pitching_team <- player_starting_pitching %>% 
+    filter(team == t)
+  
+    # Filter player_starting_pitching
+  player_relief_pitching_team <- player_relief_pitching %>% 
+    filter(team == t)
+  
+  player_pitching_splits_team <- player_pitching_splits %>% 
+    filter(team == t)
+  
+  #filter radar plot
+  radar_plot_data_team <- radar_plot_data %>% 
+    filter(team == t)
+  
+  # create variables to use for each team in loop
+  logo <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(team_logo_espn))
+  logo2 <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(team_scoreboard_logo_espn))
+  logo3 <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(team_cap_logo_on_light))
+  logo4 <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(team_cap_logo_on_dark))
+  team_color <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(team_color))
+  team_color2 <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(team_color2))
+  gg_color <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(gg_color))
+  gg_fill_color <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(gg_fill_color))
+  team <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(team))
+  division <- toString(mlb_standings_max %>% filter(team_abbr == t) %>% select(division_name))
+  
+  # Assign filtered player_batting and product group to subpage_env 
+  assign("player_batting_team", player_batting_team, team_env)
+
+  
+
+
+  
+  # Knit subpage.RMD using the subpage_env and add result to out vector
+  out = c(out, knitr::knit_child('subpage.RMD', envir = team_env))
+}
+```
+
+`r paste(knitr::knit_child(text = out), collapse = '')`
+
+::: {.doc_main}
+\newpage
+<br>
+<br>
+**About the Data**
+
+- Player batting tables are filtered and sorted based on top 10 players in plate appearances
+- Player pitching tables are filtered and sorted based on top 7 players in total batters faced
+- Player batting splits tables are filtered and sorted based on top 10 players in plate appearances
+  - only players who have faced both LHP and RHP are displayed
+- Player pitching splits tables are filtered and sorted based on top 10 players in total batters faced
+  - only players who have faced both LHH and RHH are displayed
+- In each table, the top values are the actual values for the statistic
+  - For the team tables, the bottom values are the league rank (1 is best; 30 is worst)
+    - Top 8 in the league values are highlighted <span style="padding-top: 0px;  padding-bottom: 4px; padding-left: 2px; padding-right: 2px; color:white !important; background-color:#169D82 !important">green</span>
+    - Bottom 8 in the league values are highlighted <span style="padding-top: 0px; padding-bottom: 4px; padding-left: 2px; padding-right: 2px; background-color:#F4D166 !important">gold</span>
+  - For the player tables, the bottom values are the percentile rank (100 is best; 0 is worst)
+    - Top 25 percentile values are highlighted <span style="padding-top: 0px; padding-bottom: 4px; padding-left: 2px; padding-right: 2px; color:white !important; background-color:#169D82 !important">green</span>
+    - Bottom 25 percentile values are highlighted <span style="padding-top: 0px; padding-bottom: 4px; padding-left: 2px; padding-right: 2px; background-color:#F4D166 !important">gold</span>
+      
+
+**Glossary**
+
+<div style="float: left; width: 390px; line-height: 1;">
+**PA** Plate Appearances
+
+**IP** Innings Pitched
+
+**GS** Games Started
+
+**AVG** Batting Average
+
+**OBP** On Base Percentage
+
+**SLG** Slugging Percentage
+
+**ISO** Isolated Power – (SLG - AVG)
+
+**BB%** Walk %
+
+**K%** Strikeout %
+
+**BB/K** Walk to Strikeout Ratio
+
+**K/BB** Strikeout to Walk Ratio
+
+**BABIP** Batting Average of Balls in Play
+
+**K/9** Strikeouts / 9 Innings
+
+**BB/9** Walks / 9 Innings
+
+**SOFT%** Soft Hit Balls / Batted Balls
+
+**MED%** Medium Hit Balls / Batted Balls
+
+**HARD%** Hard Hit Balls / Batted Balls
+
+**BARREL%** Hard Hit Balls leading to >= .500 AVG & 1.500 SLG
+
+**PULL%** Pulled Batted Balls / Batted Balls
+
+**CENTER%** Center of Field Batted Balls / Batted Balls
+</div>
+<div style="float: right; width: 390px; line-height: 1;">
+**OPPO%** Opposite Field Batted Balls / Batted Balls
+
+**WRC+** Runs Created Adjusted for Run Environment
+
+**WHIP** Walked + Hits / IP
+
+**GB%** Ground Balls / Balls in Play
+
+**FB%** Fly Balls / Balls in Play
+
+**HR/FB** Home runs / Fly Balls
+
+**HR/9** Home runs / 9 innings
+
+**ZONE%** Percentage of Pitches in Strike Zone
+
+**F-STRIKE%** First Pitch Strike Percentage
+
+**CHASE%** Swings at Pitches Outside Zone / Pitches Outside Zone
+
+**CSW%** Called Strikes + Swings and Misses / Total Pitches
+
+**CONTACT%** Contact Swings / Totals Swings
+
+**ERA-** Adjusted Earned Run Average
+
+**FIP-** Adjusted Fielder Independent Pitching
+
+**XFIP-** Adjusted Expected FIP
+
+**SIERA** Skill Interactive Earned Run Average
+
+**WAR** Wins Above Replacement
+
+**XBA** Expected Batting Average
+
+**XSLG** Expected Slugging Percentage
+
+**XWOBA** Expected Weighted On Base Average
+</div>
+:::
+
+
+

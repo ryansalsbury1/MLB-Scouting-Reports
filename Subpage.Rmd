@@ -1,0 +1,1676 @@
+Row
+-------------------------------------------
+<!-- insert inside div container that expands full width so that images are centered -->
+<div style="text-align: center; width:100%; height:100%">
+  <img src="`r logo`" style="margin:auto; width:70px;display:block" />
+  <span>`r team`</span>
+</div>
+
+Row {data-height: 5}
+-----------------------------------------------------------------------
+
+  
+Row
+-----------------------------------------------------------------------
+
+```{r, fig.align="center", fig.width=12.712, fig.height=.5}
+team_kpi <- mlb_standings_max %>% filter(team_abbr == t) %>% select(win_loss, xwin_loss, run_diff, div_rank, mlb_rank)
+
+#remove space in w-l records
+team_kpi$win_loss <- gsub(" ", "", team_kpi$win_loss)
+team_kpi$xwin_loss <- gsub(" ", "", team_kpi$xwin_loss)
+
+
+#append + or - to run differential
+team_kpi$run_diff <- ifelse(team_kpi$run_diff > 0, 
+                            paste0("+", team_kpi$run_diff),team_kpi$run_diff)
+
+#append st, rd, th, nd to ranks
+team_kpi$mlb_rank <- case_when(team_kpi$mlb_rank %in% c(1,21) ~ paste0(team_kpi$mlb_rank, "st"),
+          team_kpi$mlb_rank %in% c(2,22) ~ paste0(team_kpi$mlb_rank, "nd"),
+          team_kpi$mlb_rank %in% c(3,23) ~ paste0(team_kpi$mlb_rank, "rd"),
+          TRUE ~ paste0(team_kpi$mlb_rank, "th"))
+
+team_kpi$div_rank <- case_when(team_kpi$div_rank %in% c(1) ~ paste0(team_kpi$div_rank, "st"),
+          team_kpi$div_rank %in% c(2) ~ paste0(team_kpi$div_rank, "nd"),
+          team_kpi$div_rank %in% c(3) ~ paste0(team_kpi$div_rank, "rd"),
+          TRUE ~ paste0(team_kpi$div_rank, "th"))
+
+
+#rename columns to display in chart
+colnames(team_kpi) <- c("W-L", "Expected W-L", "Run Differential", "Division Rank", "League Rank")
+
+#convert table to long
+team_kpi_long <- gather(team_kpi, stat, value)
+
+#x and y  values for 5 kpi boxes
+team_kpi_long$x <- c(1,2,3,4,5)
+team_kpi_long$y <- rep(1, 5)
+#height and width values for 5 boxes
+team_kpi_long$h <- rep(.3, 5)
+team_kpi_long$w <- rep(.8, 5)
+
+ggplot(team_kpi_long, aes(x, y, height = h, width = w)) +
+  geom_tile(fill = "#363231", color = "#02273B", lwd = 1.5) + geom_text(label=paste0(team_kpi_long$stat, "\n"), color="white", fontface = "bold",size = 3.7, aes(family=c("Exo 2")), lineheight = .7) + geom_text(label=paste0("\n", team_kpi_long$value), color="gold", fontface = "bold", size = 3.7, aes(family=c("Exo 2"))) + 
+  coord_fixed() +
+  guides(fill = F, scale = "none") + theme_void() %+replace%
+    theme(
+          plot.margin=margin(l=.2, unit="lines"))
+
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+```{r, fig.width=7.5, fig.height=4}
+library(lubridate)
+
+#Runs Scored vs Run Against Plot
+ggplot(mlb_standings_max, aes(x = rs_g, y = ra_g)) +
+  #add average lines  
+  geom_hline(aes(yintercept = mean(rs_g)), color = "#C83803", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean(ra_g)), color = "#C83803", linetype = "dashed") +
+  
+  # circle + logo excluding current team in loop (white)
+  geom_point(data = mlb_standings_max %>% filter(team_abbr != t), stat='identity', size = 12, color=alpha("grey", .3), pch=21, stroke = 1.3) +
+  geom_image(data = mlb_standings_max %>% filter(team_abbr != t), 
+             aes(image = team_cap_logo_on_light), 
+             image_fun = transparent, 
+             size = 0.033 + (mlb_standings_max %>% filter(team_abbr != t))$runs_plot_image_size_adj, 
+             asp = 1.7 / 1, nudge_x = (mlb_standings_max %>% filter(team_abbr != t))$nudge_runs_plot)+
+  # circle + logo for current team in loop (black)
+  geom_point(data = mlb_standings_max %>% filter(team_abbr == t), 
+             stat='identity', size = 12, alpha = 1, color=gg_color, 
+             pch=21, fill=gg_fill_color, stroke = 1.5) +
+  geom_image(data = mlb_standings_max %>% filter(team_abbr == t), 
+             aes(image = logo3), 
+             size = 0.033 + (mlb_standings_max %>% filter(team_abbr == t))$runs_plot_image_size_adj, 
+             asp = 1.7 / 1, nudge_x = (mlb_standings_max %>% filter(team_abbr == t))$nudge_runs_plot)+
+ 
+  scale_x_continuous(breaks = seq(plyr::round_any(min(mlb_standings_max$rs_g), .5, f = floor), plyr::round_any(max(mlb_standings_max$rs_g), .5, f=ceiling), by = 1), limits = c(plyr::round_any(min(mlb_standings_max$rs_g), .5, f = floor), plyr::round_any(max(mlb_standings_max$rs_g), .5, f = ceiling))) +
+  scale_y_reverse(breaks = seq(plyr::round_any(max(mlb_standings_max$ra_g), .5, f = ceiling), plyr::round_any(min(mlb_standings_max$ra_g), .5, f=floor), by = -1), limits = c(plyr::round_any(max(mlb_standings_max$ra_g), .5, f = ceiling), plyr::round_any(min(mlb_standings_max$ra_g), .5, f = floor))) +
+
+  labs(title = "Runs Scored vs. Runs Allowed", x = "Runs Scored Per Game", y="Runs Allowed Per Game") +
+  runs_plot_theme()
+```
+
+
+```{r, fig.width=4.2, fig.height=4}
+data <- radar_plot_data %>% filter(team == t) %>% select(-c(team))
+
+colnames(data) <- c("stat", "\nHitting", "Starting\nPitching", "Bullpen", "Defense")
+
+#set stat to row names and remove column
+rownames(data) <- data$stat
+data <- data %>% select(-c(stat))
+
+#need to add max and min values to first 2 rows of data frame for radarchart function
+data <- rbind(rep(100,4) , rep(0,4) , data)
+
+op <- par(mar = c(1, 0, 1, 0), oma=c(0,0,0,0), family = "Exo 2")
+radar_plot_func(data, caxislabels = c("", "", "", "", ""))
+legend(
+  x = .9, y = -.8, legend = rownames(data[-c(1,2),]), horiz = FALSE,
+  bty = "n", pch = 20 , col = c("#b6e3d7", "#137a63"),
+  text.col = "black", cex = .55, pt.cex = 1
+)
+
+```
+
+Row
+---------------------------------------
+
+```{r, fig.width=12.6, fig.height=2.6}
+    #Division Race Trend Plot
+     ggplot(mlb_standings) + 
+      #division standings line for team in loop
+      geom_line(data = mlb_standings %>% filter(team_abbr == t), 
+                aes(x = date, y = div_rank, group = team, color = gg_color), linewidth = 1.2) +
+      #circle points for team in loop
+      geom_point(data = mlb_standings %>% filter(team_abbr == t), 
+                 aes(x = max(date), y = (mlb_standings_max %>% filter(team_abbr == t) %>% select(div_rank))$div_rank, color = gg_color), 
+                 size = 9.7, fill = gg_fill_color, pch=21, stroke = 1.4)  +
+      #division standings line for other division teams
+      geom_line(data = mlb_standings %>% filter(team_abbr != t & division_name == division), 
+                aes(x = date, y = div_rank, group = team), color = alpha("grey", .3), linewidth = 1.2) +
+      # circle points for other division teams
+      geom_point(data = mlb_standings_max %>% filter(team_abbr != t & division_name == division), 
+                 aes(x = max(date), y = div_rank, color = alpha("grey", .3)), 
+                 size = 9.7, fill = "white", pch=21, stroke = 1.4) +
+      scale_color_identity() + 
+      #logos for team in loop
+      geom_image(data = mlb_standings %>% filter(team_abbr == t), 
+                 aes(x = max(date), y = (mlb_standings_max %>% filter(team_abbr == t) %>% select(div_rank))$div_rank, image = team_cap_logo_on_light), 
+                 image_fun = transparent, 
+                 size = 0.012 + (mlb_standings_max %>% filter(team_abbr == t))$div_race_image_size_adj, 
+                 asp = 6.4 / 1, nudge_x = (mlb_standings_max %>% filter(team_abbr == t))$nudge_div_race_plot) +
+      #logos for other division teams in loop
+      geom_image(data = mlb_standings_max %>% filter(team_abbr != t & division_name == division), 
+                 aes(x = max(date), y = div_rank, image = team_cap_logo_on_light), 
+                 image_fun = transparent, 
+                 size = 0.012 + (mlb_standings_max %>% filter(team_abbr != t & division_name == division))$div_race_image_size_adj , 
+                 asp = 6.4 / 1, nudge_x = (mlb_standings_max %>% filter(team_abbr != t & division_name == division))$nudge_div_race_plot) +
+      #update y axis
+      scale_y_reverse(limits=c(5, 1), label = c("1st", "2nd", "3rd", "4th", "5th")) +
+      #update x axis
+      scale_x_date(date_labels = "%b-%d", date_breaks  ="1 day", expand = expansion(mult = c(0, .02))) + 
+      coord_cartesian(clip = "off") + 
+      labs(title = "Division Race Trend", subtitle = division) + 
+      theme_minimal() + 
+      theme(axis.text = element_text(size=7),
+            axis.text.x = element_text(angle = 90, hjust = 0),
+            axis.title= element_blank(),
+            plot.title=element_text(size = 10, face="bold", color = team_color),
+            plot.subtitle=element_text(size = 7, vjust = 3.5, color = team_color),
+            text = element_text("Exo 2"), 
+            legend.position = "none",
+            panel.grid.minor = element_blank(),
+            panel.grid.major = element_line(color = alpha("grey", .1)),
+            #axis.ticks = element_line(),
+            plot.margin=margin(b=0, t = .5, l=2.9,r=2.4, unit="lines")) 
+   
+    
+    ```
+
+
+Row
+-----------------------------------------------------------------------
+
+```{r}
+
+team_pitching  %>% filter(team == t) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>% 
+    #whip
+    cols_merge(
+      columns = c(whip_rk, whip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(whip_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+    #babip
+    cols_merge(
+      columns = c(babip_rk, babip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(babip_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #k/9
+    cols_merge(
+      columns = c(k9_rk, k_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(k9_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+  #bb/9
+    cols_merge(
+      columns = c(bb9_rk, bb_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(bb9_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+  #kbb
+    cols_merge(
+      columns = c(kbb_rk, k_bb),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(kbb_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    
+  #gb
+    cols_merge(
+      columns = c(gb_rk, gb_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(gb_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+  #fb
+    cols_merge(
+      columns = c(fb_rk, fb_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fb_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+  #hr/fb
+    cols_merge(
+      columns = c(hrfb_rk, hr_fb),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hrfb_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+  #hr9
+    cols_merge(
+      columns = c(hr9_rk, hr_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hr9_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+  #zone%
+    cols_merge(
+      columns = c(zone_rk, zone_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(zone_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+  #f-strike
+    cols_merge(
+      columns = c(fstrike_rk, f_strike_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fstrike_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #oswing%
+    cols_merge(
+      columns = c(o_swing_rk, o_swing_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(o_swing_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #csw%
+    cols_merge(
+      columns = c(csw_rk, csw_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(csw_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #soft
+    cols_merge(
+      columns = c(soft_rk, soft_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(soft_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #med
+    cols_merge(
+      columns = c(med_rk, med_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(med_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #hard
+    cols_merge(
+      columns = c(hard_rk, hard_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hard_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #barrel%
+    cols_merge(
+      columns = c(barrel_rk, barrel_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(barrel_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #era
+    cols_merge(
+      columns = c(era_rk, era_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(era_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #fip
+    cols_merge(
+      columns = c(fip_rk, fip_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fip_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #xfip
+    cols_merge(
+      columns = c(xfip_rk, xfip_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(xfip_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #siera
+    cols_merge(
+      columns = c(siera_rk, siera),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(siera_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+    tab_options(
+      data_row.padding = px(2),
+      source_notes.font.size = 10,
+    ) %>%  
+   team_pitching_table_theme() %>% gt_add_divider(columns = c("babip_rk", "kbb_rk","hr9_rk", "csw_rk", "barrel_rk"), style = "dashed", color = "grey", weight = px(1),
+                                            include_labels = FALSE) %>% tab_header(title = "Team Pitching")
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+```{r}
+
+team_batting  %>% filter(team == t) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>% 
+    #obp
+    cols_merge(
+      columns = c(obp_rk, obp),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(obp_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+    #slg
+    cols_merge(
+      columns = c(slg_rk, slg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(slg_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #iso
+    cols_merge(
+      columns = c(iso_rk, iso),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(iso_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+   #bb
+    cols_merge(
+      columns = c(bb_rk, bb_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(bb_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #k
+    cols_merge(
+      columns = c(k_rk, k_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(k_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #bbk
+    cols_merge(
+      columns = c(bbk_rk, bb_k),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(bbk_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #oswing%
+    cols_merge(
+      columns = c(o_swing_rk, o_swing_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(o_swing_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #csw%
+    cols_merge(
+      columns = c(csw_rk, csw_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(csw_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #contact%
+    cols_merge(
+      columns = c(contact_rk, contact_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(contact_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #soft
+    cols_merge(
+      columns = c(soft_rk, soft_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(soft_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #med
+    cols_merge(
+      columns = c(med_rk, med_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(med_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #hard
+    cols_merge(
+      columns = c(hard_rk, hard_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hard_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #barrel%
+    cols_merge(
+      columns = c(barrel_rk, barrel_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(barrel_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #pull
+    cols_merge(
+      columns = c(pull_rk, pull_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(pull_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #center
+    cols_merge(
+      columns = c(cent_rk, cent_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(cent_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #oppo
+    cols_merge(
+      columns = c(oppo_rk, oppo_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(oppo_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #wrc
+    cols_merge(
+      columns = c(wrc_rk, wrc_plus),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(wrc_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+    tab_options(
+      data_row.padding = px(2),
+      source_notes.font.size = 10,
+    ) %>%  
+   team_batting_table_theme() %>% gt_add_divider(columns = c("iso_rk", "contact_rk", "barrel_rk", "oppo_rk"), style = "dashed", color = "grey", weight = px(1),
+                                            include_labels = FALSE) %>% tab_header(title = "Team Batting")
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+```{r}
+library(svglite)
+
+#create additional wrc_plus to use for bar
+team_pitching_splits$bar <- team_pitching_splits$xfip
+
+team_pitching_splits  %>% filter(team == t) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #obp
+    cols_merge(
+      columns = c(obp_rk, obp),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(obp_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+    #slg
+    cols_merge(
+      columns = c(slg_rk, slg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(slg_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #kbb
+    cols_merge(
+      columns = c(kbb_rk, k_bb),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(kbb_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #woba
+    cols_merge(
+      columns = c(woba_rk, woba),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(woba_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+  #fip
+    cols_merge(
+      columns = c(fip_rk, fip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fip_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+  #xfip
+    cols_merge(
+      columns = c(xfip_rk, xfip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(xfip_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>% 
+    tab_options(
+      data_row.padding = px(2),
+      source_notes.font.size = 10,
+    ) %>% gt_plt_bar_custom(column = bar, keep_column = FALSE, color = "grey", width = 20) %>%
+   team_pitching_splits_table_theme() %>% tab_header(title = "Team Pitching Splits")
+
+
+```
+
+```{r}
+
+#create additional wrc_plus to use for bar
+team_batting_splits$bar <- team_batting_splits$wrc_plus
+
+team_batting_splits  %>% filter(team == t) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    )  %>%
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #obp
+    cols_merge(
+      columns = c(obp_rk, obp),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(obp_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+    #slg
+    cols_merge(
+      columns = c(slg_rk, slg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(slg_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #iso
+    cols_merge(
+      columns = c(iso_rk, iso),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(iso_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #bbk
+    cols_merge(
+      columns = c(bbk_rk, bb_k),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(bbk_rk)
+      ),
+      fn = stack_function_rk_colors
+    ) %>%
+    #wrc
+    cols_merge(
+      columns = c(wrc_rk, wrc_plus),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(wrc_rk)
+      ),
+      fn = stack_function_rk_colors
+    )  %>%
+    tab_options(
+      data_row.padding = px(2),
+      source_notes.font.size = 10)  %>% gt_plt_bar_custom(column = bar, keep_column = FALSE, color = "grey", width = 20) %>%
+   team_batting_splits_table_theme() %>% tab_header(title = "Team Batting Splits")
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+```{r}
+
+player_starting_pitching  %>% filter(team == t) %>% select(-c(team)) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>% 
+    #whip
+    cols_merge(
+      columns = c(whip_rk, whip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(whip_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+    #babip
+    cols_merge(
+      columns = c(babip_rk, babip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(babip_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #k/9
+    cols_merge(
+      columns = c(k9_rk, k_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(k9_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #bb/9
+    cols_merge(
+      columns = c(bb9_rk, bb_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(bb9_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #kbb
+    cols_merge(
+      columns = c(kbb_rk, k_bb),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(kbb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    
+  #gb
+    cols_merge(
+      columns = c(gb_rk, gb_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(gb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #fb
+    cols_merge(
+      columns = c(fb_rk, fb_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #hr/fb
+    cols_merge(
+      columns = c(hrfb_rk, hr_fb),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hrfb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #hr9
+    cols_merge(
+      columns = c(hr9_rk, hr_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hr9_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #zone%
+    cols_merge(
+      columns = c(zone_rk, zone_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(zone_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #f-strike
+    cols_merge(
+      columns = c(fstrike_rk, f_strike_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fstrike_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #oswing%
+    cols_merge(
+      columns = c(o_swing_rk, o_swing_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(o_swing_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #csw%
+    cols_merge(
+      columns = c(csw_rk, csw_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(csw_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #soft
+    cols_merge(
+      columns = c(soft_rk, soft_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(soft_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #med
+    cols_merge(
+      columns = c(med_rk, med_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(med_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #hard
+    cols_merge(
+      columns = c(hard_rk, hard_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hard_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #barrel%
+    cols_merge(
+      columns = c(barrel_rk, barrel_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(barrel_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #era
+    cols_merge(
+      columns = c(era_rk, era_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(era_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #fip
+    cols_merge(
+      columns = c(fip_rk, fip_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fip_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #xfip
+    cols_merge(
+      columns = c(xfip_rk, xfip_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(xfip_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #siera
+    cols_merge(
+      columns = c(siera_rk, siera),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(siera_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+  #war
+    cols_merge(
+      columns = c(war_rk, war),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(war_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+    tab_options(
+      data_row.padding = px(2),
+      source_notes.font.size = 10,
+    ) %>%  
+   player_pitching_table_theme() %>% gt_add_divider(columns = c("babip_rk", "kbb_rk","hr9_rk", "csw_rk", "barrel_rk"), style = "dashed", color = "grey", weight = px(1),
+                                            include_labels = FALSE) %>% tab_header(title = "Player Starting Pitching")
+
+```
+
+```{r pagebreak, results='asis'}
+  cat('\\newpage')
+```
+
+Row
+-----------------------------------------------------------------------
+
+ <br>
+
+```{r}
+
+player_relief_pitching  %>% filter(team == t) %>% select(-c(team)) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>% 
+    #whip
+    cols_merge(
+      columns = c(whip_rk, whip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(whip_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+    #babip
+    cols_merge(
+      columns = c(babip_rk, babip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(babip_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #k/9
+    cols_merge(
+      columns = c(k9_rk, k_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(k9_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #bb/9
+    cols_merge(
+      columns = c(bb9_rk, bb_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(bb9_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #kbb
+    cols_merge(
+      columns = c(kbb_rk, k_bb),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(kbb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    
+  #gb
+    cols_merge(
+      columns = c(gb_rk, gb_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(gb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #fb
+    cols_merge(
+      columns = c(fb_rk, fb_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #hr/fb
+    cols_merge(
+      columns = c(hrfb_rk, hr_fb),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hrfb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #hr9
+    cols_merge(
+      columns = c(hr9_rk, hr_9),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hr9_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #zone%
+    cols_merge(
+      columns = c(zone_rk, zone_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(zone_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+  #f-strike
+    cols_merge(
+      columns = c(fstrike_rk, f_strike_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fstrike_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #oswing%
+    cols_merge(
+      columns = c(o_swing_rk, o_swing_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(o_swing_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #csw%
+    cols_merge(
+      columns = c(csw_rk, csw_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(csw_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #soft
+    cols_merge(
+      columns = c(soft_rk, soft_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(soft_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #med
+    cols_merge(
+      columns = c(med_rk, med_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(med_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #hard
+    cols_merge(
+      columns = c(hard_rk, hard_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hard_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #barrel%
+    cols_merge(
+      columns = c(barrel_rk, barrel_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(barrel_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #era
+    cols_merge(
+      columns = c(era_rk, era_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(era_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #fip
+    cols_merge(
+      columns = c(fip_rk, fip_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fip_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #xfip
+    cols_merge(
+      columns = c(xfip_rk, xfip_),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(xfip_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #siera
+    cols_merge(
+      columns = c(siera_rk, siera),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(siera_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+  #war
+    cols_merge(
+      columns = c(war_rk, war),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(war_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+    tab_options(
+      data_row.padding = px(2),
+      source_notes.font.size = 10,
+      source_notes.padding = px(0)
+    ) %>%  
+   player_pitching_table_theme() %>% gt_add_divider(columns = c("babip_rk", "kbb_rk","hr9_rk", "csw_rk", "barrel_rk"), style = "dashed", color = "grey", weight = px(1),include_labels = FALSE) %>% tab_header(title = "Player Relief Pitching")
+
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+```{r}
+
+player_batting  %>% filter(team == t) %>% select(-c(team)) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>% 
+    #obp
+    cols_merge(
+      columns = c(obp_rk, obp),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(obp_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+    #slg
+    cols_merge(
+      columns = c(slg_rk, slg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(slg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #iso
+    cols_merge(
+      columns = c(iso_rk, iso),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(iso_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #bbk
+    cols_merge(
+      columns = c(bbk_rk, bb_k),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(bbk_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #oswing%
+    cols_merge(
+      columns = c(o_swing_rk, o_swing_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(o_swing_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #csw%
+    cols_merge(
+      columns = c(csw_rk, csw_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(csw_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #contact%
+    cols_merge(
+      columns = c(contact_rk, contact_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(contact_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #soft
+    cols_merge(
+      columns = c(soft_rk, soft_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(soft_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #med
+    cols_merge(
+      columns = c(med_rk, med_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(med_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #hard
+    cols_merge(
+      columns = c(hard_rk, hard_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(hard_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #barrel%
+    cols_merge(
+      columns = c(barrel_rk, barrel_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(barrel_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #pull
+    cols_merge(
+      columns = c(pull_rk, pull_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(pull_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #center
+    cols_merge(
+      columns = c(cent_rk, cent_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(cent_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #oppo
+    cols_merge(
+      columns = c(oppo_rk, oppo_pct),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(oppo_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #wrc
+    cols_merge(
+      columns = c(wrc_rk, wrc_plus),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(wrc_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #war
+    cols_merge(
+      columns = c(war_rk, war),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(war_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #xba
+    cols_merge(
+      columns = c(xba_rk, xba),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(xba_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #xslg
+    cols_merge(
+      columns = c(xslg_rk, xslg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(xslg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #xwoba
+    cols_merge(
+      columns = c(xwoba_rk, xwoba),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(xwoba_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    tab_options(
+      data_row.padding = px(2),
+      source_notes.font.size = 10,
+    ) %>%  
+   player_batting_table_theme() %>% gt_add_divider(columns = c("iso_rk", "contact_rk", "barrel_rk", "oppo_rk", "war_rk"), style = "dashed", color = "grey", weight = px(1),
+                                            include_labels = FALSE) %>% tab_header(title = "Player Batting")
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+```{r}
+#create additional wrc_plus to use for bar
+player_pitching_splits$bar <- player_pitching_splits$xfip
+
+player_pitching_splits  %>% filter(team == t) %>% select(-c(team)) %>% group_by(name) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #obp
+    cols_merge(
+      columns = c(obp_rk, obp),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(obp_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+    #slg
+    cols_merge(
+      columns = c(slg_rk, slg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(slg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #kbb
+    cols_merge(
+      columns = c(kbb_rk, k_bb),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(kbb_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #woba
+    cols_merge(
+      columns = c(woba_rk, woba),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(woba_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+  #fip
+    cols_merge(
+      columns = c(fip_rk, fip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(fip_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+  #xfip
+    cols_merge(
+      columns = c(xfip_rk, xfip),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(xfip_rk)
+      ),
+      fn = stack_function_colors
+    )  %>% 
+    tab_options(
+      data_row.padding = px(1.8),
+      source_notes.font.size = 10,
+    ) %>% gt_plt_bar_custom(column = bar, keep_column = FALSE, color = "grey", width = 20) %>%
+   player_pitching_splits_table_theme() %>% tab_header(title = "Player Pitching Splits")
+
+```
+
+```{r}
+
+#create additional wrc_plus to use for bar
+player_batting_splits$bar <- player_batting_splits$wrc_plus
+
+player_batting_splits  %>% filter(team == t) %>% select(-c(team)) %>% group_by(name) %>%
+    gt() %>%
+    #avg
+    cols_merge(
+      columns = c(avg_rk, avg),
+    )  %>%
+    text_transform(
+      locations = cells_body(
+        columns = c(avg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #obp
+    cols_merge(
+      columns = c(obp_rk, obp),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(obp_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+    #slg
+    cols_merge(
+      columns = c(slg_rk, slg),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(slg_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #iso
+    cols_merge(
+      columns = c(iso_rk, iso),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(iso_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #bbk
+    cols_merge(
+      columns = c(bbk_rk, bb_k),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(bbk_rk)
+      ),
+      fn = stack_function_colors
+    ) %>%
+    #wrc
+    cols_merge(
+      columns = c(wrc_rk, wrc_plus),
+    ) %>% 
+    text_transform(
+      locations = cells_body(
+        columns = c(wrc_rk)
+      ),
+      fn = stack_function_colors
+    )  %>%
+    tab_options(
+      data_row.padding = px(1.8),
+      source_notes.font.size = 10)  %>% gt_plt_bar_custom(column = bar, keep_column = FALSE, color = "grey", width = 20) %>%
+   player_batting_splits_table_theme() %>% tab_header(title = "Player Batting Splits") 
+
+```
+
+Row
+-------------------------------------------
+```{r pagebreak, results='asis'}
+
+if (t == 'NYM') {
+  cat('\\newpage')
+}
+```
+
+
+
+Row
+-----------------------------------------------------------------------
+
+<br>
+
+
+
+
+
+
+
+
+
+
